@@ -1,0 +1,101 @@
+  @computed get offsets() {
+    return this.snacks.map((item: any, i: number) => {
+      let index = i;
+      let offset = 20;
+      while (this.snacks[index - 1]) {
+        offset += this.snacks[index - 1] + 16;
+        index -= 1;
+      }
+      return offset;
+    });
+  }
+
+  @action handlePresentSnackbar = (variant: any, message: any) => {
+    this.queue.push({
+      message,
+      variant,
+      open: true,
+      key: new Date().getTime() + Math.random(),
+    });
+    this.handleDisplaySnack();
+  }
+
+  @action handleEnqueueSnackbar = (message: any, options: any) => {
+    this.queue.push({
+      message,
+      ...options,
+      open: true,
+      key: new Date().getTime() + Math.random(),
+    });
+    this.handleDisplaySnack();
+  }
+
+  @action handleDisplaySnack = () => {
+    if (this.snacks.length >= this.maxSnack) {
+      return this.handleDismissOldest();
+    }
+    return this.processQueue();
+  }
+
+  /**
+   * Display items (notifications) in the queue if there's space for them.
+   */
+  @action processQueue = () => {
+    if (this.queue.length > 0) {
+      const newOne = this.queue.shift();
+      this.snacks = [...this.snacks, newOne];
+    }
+  }
+
+  /**
+   * Hide oldest snackbar on the screen because there exists a new one which we have to display.
+   */
+  @action handleDismissOldest = () => {
+    this.snacks = this.snacks
+      .filter((item: any) => item.open === true)
+      .map((item: any, i: number) =>
+        i === 0 ? { ...item, open: false } : { ...item },
+      );
+  }
+
+  /**
+   * Hide a snackbar after its timeout.
+   * @param {object} event - The event source of the callback
+   * @param {string} reason - can be timeout or clickaway
+   * @param {number} key - id of the snackbar we want to hide
+   */
+  @action handleCloseSnack = (event: any, reason: any, key: any) => {
+    this.snacks = this.snacks.map((item: any) =>
+      item.key === key ? { ...item, open: false } : { ...item },
+    );
+
+    if (this.onClose) this.onClose(event, reason, key);
+  }
+
+  /**
+   * When we set open attribute of a snackbar to false (i.e. after we hide a snackbar),
+   * it leaves the screen and immediately after leaving animation is done, this method
+   * gets called. We remove the hidden snackbar from state and then display notifications
+   * waiting in the queue (if any).
+   * @param {number} key - id of the snackbar we want to remove
+   * @param {object} event - The event source of the callback
+   */
+  @action handleExitedSnack = (event: {}, key: number) => {
+    const enterDelay = TRANSITION_DELAY + TRANSITION_DOWN_DURATION + 40;
+
+    this.snacks = this.snacks.filter((item: any) => {
+      return item.key !== key;
+    });
+    setTimeout(this.handleDisplaySnack, enterDelay);
+  }
+
+  /**
+   * Sets height for a given snackbar
+   * @param {number} height - height of snackbar after it's been rendered
+   * @param {number} key - id of the snackbar we want to remove
+   */
+  @action handleSetHeight = (key: number, height: number) => {
+    this.snacks = this.snacks.map((item: any) =>
+      item.key === key ? { ...item, height } : { ...item },
+    );
+  }
